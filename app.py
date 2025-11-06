@@ -2,17 +2,11 @@ import streamlit as st
 from pathlib import Path
 from PIL import UnidentifiedImageError
 
-# ---------------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------------
 st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
     layout="wide",
 )
 
-# ---------------------------------------------------------
-# GLOBAL STYLES + GOOGLE FONTS
-# ---------------------------------------------------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -24,7 +18,7 @@ st.markdown("""
   --cnb-text: #ffffff;
 }
 
-/* Global typography */
+/* global */
 html, body, [class*="css"] {
   font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
   color: var(--cnb-text);
@@ -32,7 +26,7 @@ html, body, [class*="css"] {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Top bar */
+/* top bar */
 .cnb-topbar {
   background: var(--cnb-blue);
   border-bottom: none;
@@ -51,7 +45,7 @@ html, body, [class*="css"] {
   color: #d8d8ff;
 }
 
-/* Right context box — flat blue */
+/* right panel */
 .context-box {
   background: var(--cnb-blue);
   border: none;
@@ -59,12 +53,12 @@ html, body, [class*="css"] {
   padding: 1.2rem 1.4rem;
 }
 
-/* Sidebar background */
+/* sidebar */
 [data-testid="stSidebar"] {
   background-color: #050040;
 }
 
-/* Headings + spacing */
+/* headings */
 h1, h2, h3 {
   color: var(--cnb-white);
   font-weight: 700;
@@ -72,11 +66,13 @@ h1, h2, h3 {
 .markdown-text-container, .stMarkdown {
   line-height: 1.55;
 }
+
+/* IMPORTANT: push main content down so it shows below topbar */
 .main > div {
-  padding-top: 0rem;
+  padding-top: 1.6rem;
 }
 
-/* Expander (collapsible) look */
+/* make expanders match */
 details {
   background: transparent !important;
   color: var(--cnb-white);
@@ -84,9 +80,6 @@ details {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# TOP BAR
-# ---------------------------------------------------------
 st.markdown("""
 <div class="cnb-topbar">
   <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
@@ -94,9 +87,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# STRUCTURE
-# ---------------------------------------------------------
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -148,28 +138,86 @@ sections = {
     ],
 }
 
-# ---------------------------------------------------------
-# HELPERS
-# ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
-    """Turn '1. Brand Narrative' into 'content/1-brand-narrative.md'."""
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
-    filename = f"{number_part.strip()}-{slug}.md"
-    return Path("content") / filename
-
+    return Path("content") / f"{number_part.strip()}-{slug}.md"
 
 def load_markdown(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
     return f"⚠️ Missing: `{path}`"
 
-
 def extract_subsection(full_md: str, subsection_title: str) -> str:
-    """Extract subsection content from markdown by heading."""
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
     for i, line in enumerate(lines):
         if line.strip() == target:
             start = i
+            break
+    if start is None:
+        return full_md
+    out = []
+    for j in range(start, len(lines)):
+        line_j = lines[j]
+        if j > start and line_j.startswith("## "):
+            break
+        out.append(line_j)
+    return "\n".join(out)
+
+# sidebar
+logo_path = Path("assets/logo-primary.png")
+if logo_path.exists():
+    try:
+        st.sidebar.image(str(logo_path), use_container_width=True)
+    except UnidentifiedImageError:
+        st.sidebar.write("Cafe Nogales")
+else:
+    st.sidebar.write("Cafe Nogales")
+
+st.sidebar.title("Cafe Nogales Blueprint")
+main_section = st.sidebar.selectbox("Section", list(sections.keys()))
+sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
+
+content_file = section_to_filename(main_section)
+full_md = load_markdown(content_file)
+sub_md = extract_subsection(full_md, sub_section)
+
+related_links = {
+    "1. Brand Narrative": [
+        ("📘 Company Story Deck", "https://drive.google.com/your-story-link"),
+    ],
+    "3. Visual Identity System": [
+        ("🎨 Figma — Master Brand System", "https://figma.com/your-brand-system-link"),
+        ("🗂 Logo Pack — Google Drive", "https://drive.google.com/your-logo-pack-link"),
+    ],
+    "5. Brand Assets": [
+        ("📱 Social Template Folder", "https://drive.google.com/your-social-template-link"),
+        ("📄 Offer Sheet Template", "https://drive.google.com/your-offer-sheet-link"),
+    ],
+    "7. Brand Guidelines": [
+        ("📘 Master PDF Manual", "https://drive.google.com/your-guidelines-pdf-link"),
+        ("🧾 Version Log Spreadsheet", "https://drive.google.com/your-version-log-link"),
+    ],
+}
+
+left_col, right_col = st.columns([2.1, 1])
+
+with left_col:
+    st.title(main_section)
+    st.subheader(sub_section)
+    st.markdown(sub_md, unsafe_allow_html=False)
+
+with right_col:
+    st.markdown('<div class="context-box">', unsafe_allow_html=True)
+    with st.expander("🔗 Related Documents", expanded=True):
+        links = related_links.get(main_section, [])
+        if links:
+            for label, url in links:
+                st.markdown(f"- [{label}]({url})")
+        else:
+            st.markdown("_No related documents yet._")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+st.caption(f"Source file: {content_file}")
