@@ -1,5 +1,6 @@
 import streamlit as st
 from pathlib import Path
+from PIL import UnidentifiedImageError  # <-- to catch bad images
 
 st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
@@ -130,10 +131,6 @@ def load_markdown(path: Path) -> str:
     return f"⚠️ Missing: `{path}`"
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
-    """
-    Find '## {subsection_title}' and return that block until the next '## '.
-    If not found, return full_md.
-    """
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -150,13 +147,18 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
         if j > start and line_j.startswith("## "):
             break
         subsection_lines.append(line_j)
-
     return "\n".join(subsection_lines)
 
-# --- SIDEBAR ---
+# --- SIDEBAR (safe image loading) ---
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
-    st.sidebar.image(str(logo_path), use_container_width=True)
+    try:
+        st.sidebar.image(str(logo_path), use_container_width=True)
+    except UnidentifiedImageError:
+        # file exists but is not a valid image
+        st.sidebar.write("Cafe Nogales")
+else:
+    st.sidebar.write("Cafe Nogales")
 
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
