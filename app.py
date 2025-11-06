@@ -1,5 +1,6 @@
 import streamlit as st
 from pathlib import Path
+from datetime import datetime
 from PIL import UnidentifiedImageError
 
 # ---------------------------------------------------------
@@ -11,7 +12,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# GLOBAL STYLES + GOOGLE FONTS (Dark Theme)
+# GLOBAL STYLES + GOOGLE FONTS (DARK THEME)
 # ---------------------------------------------------------
 st.markdown("""
 <!-- Google Fonts -->
@@ -19,8 +20,8 @@ st.markdown("""
 
 <style>
 :root {
-  --cnb-blue: #0038f4;
-  --cnb-navy: #050040;
+  --cnb-blue: #0038f4;       /* main background */
+  --cnb-navy: #050040;       /* sidebar / panels */
   --cnb-white: #ffffff;
   --cnb-light: #2a2a7a;
   --cnb-text: #ffffff;
@@ -66,18 +67,25 @@ h1, h2, h3 {
 .context-box {
   background: var(--cnb-navy);
   border: 1px solid #1a1a5e;
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-}
-
-/* Reduce top padding on main */
-.main > div {
-  padding-top: 0rem;
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 0 8px rgba(0,0,0,0.25);
 }
 
 /* Sidebar background */
 [data-testid="stSidebar"] {
   background-color: #050040;
+}
+
+/* Reduce top padding on main so it sits under topbar */
+.main > div {
+  padding-top: 0rem;
+}
+
+/* Make expanders blend with dark bg */
+details {
+  background: transparent !important;
+  color: var(--cnb-white);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -93,7 +101,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# STRUCTURE
+# STRUCTURE (FROM YOUR PDF)
 # ---------------------------------------------------------
 sections = {
     "1. Brand Narrative": [
@@ -150,6 +158,9 @@ sections = {
 # HELPERS
 # ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
+    """
+    Turn "1. Brand Narrative" into content/1-brand-narrative.md
+    """
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
@@ -161,6 +172,10 @@ def load_markdown(path: Path) -> str:
     return f"⚠️ Missing: `{path}`"
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
+    """
+    Find '## <subsection_title>' and return that block until the next '## '.
+    If not found, return the full markdown.
+    """
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -180,7 +195,7 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
     return "\n".join(subsection_lines)
 
 # ---------------------------------------------------------
-# SIDEBAR (safe logo handling)
+# SIDEBAR (SAFE LOGO)
 # ---------------------------------------------------------
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
@@ -196,22 +211,76 @@ main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
 # ---------------------------------------------------------
-# MAIN CONTENT
+# LOAD CONTENT
 # ---------------------------------------------------------
-st.title(main_section)
-st.subheader(sub_section)
-
 content_file = section_to_filename(main_section)
 full_md = load_markdown(content_file)
 sub_md = extract_subsection(full_md, sub_section)
 
+# ---------------------------------------------------------
+# RIGHT-PANEL DATA (NOTES + LINKS)
+# ---------------------------------------------------------
+section_notes = {
+    "1. Brand Narrative": "High-level storytelling: why Café Nogales exists and what sets it apart.",
+    "2. Brand Voice and Messaging": "Keep tone clear, human, and transparent. Avoid hype or vague praise.",
+    "3. Visual Identity System": "Reference only master Figma components. Follow color, logo, and grid rules.",
+    "4. Product Structure & Architecture": "Document tiers and origins consistently so roasters can read the offer sheet fast.",
+    "5. Brand Assets": "Use only approved and final assets. No drafts or unbranded files.",
+    "6. Key Brand Touchpoints": "Capture rules for physical and digital brand moments — bags, signage, socials.",
+    "7. Brand Guidelines": "Treat this as the canonical source. Update the version log with every approved change.",
+}
+
+related_links = {
+    "3. Visual Identity System": [
+        ("🎨 Figma — Master Brand System", "https://figma.com/your-brand-system-link"),
+        ("🗂 Logo Pack — Google Drive", "https://drive.google.com/your-logo-pack-link"),
+    ],
+    "5. Brand Assets": [
+        ("📱 Social Template Folder", "https://drive.google.com/your-social-template-link"),
+        ("📄 Offer Sheet Template", "https://drive.google.com/your-offer-sheet-link"),
+    ],
+    "7. Brand Guidelines": [
+        ("📘 Master PDF Manual", "https://drive.google.com/your-guidelines-pdf-link"),
+        ("🧾 Version Log Spreadsheet", "https://drive.google.com/your-version-log-link"),
+    ],
+}
+
+# ---------------------------------------------------------
+# LAYOUT
+# ---------------------------------------------------------
 left_col, right_col = st.columns([2.1, 1])
+
 with left_col:
+    st.title(main_section)
+    st.subheader(sub_section)
     st.markdown(sub_md, unsafe_allow_html=False)
+
 with right_col:
     st.markdown('<div class="context-box">', unsafe_allow_html=True)
-    st.markdown("### Full section (context)")
-    st.markdown(full_md, unsafe_allow_html=False)
+
+    # Section Info (always visible)
+    st.markdown("### 🧭 Section Info")
+    st.markdown(f"**Main section:** {main_section}")
+    st.markdown(f"**Subsection:** {sub_section}")
+    if content_file.exists():
+        ts = content_file.stat().st_mtime
+        dt = datetime.fromtimestamp(ts)
+        st.markdown(f"**Last updated:** {dt.strftime('%Y-%m-%d %H:%M')}")
+
+    # Editor Notes (collapsible)
+    with st.expander("✏️ Editor Notes", expanded=False):
+        st.markdown(section_notes.get(main_section, "_No notes for this section yet._"))
+
+    # Related Links (collapsible)
+    with st.expander("🔗 Related Links", expanded=True):
+        links = related_links.get(main_section, [])
+        if links:
+            for label, url in links:
+                st.markdown(f"- [{label}]({url})")
+        else:
+            st.markdown("_No related links yet._")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
+# Footer / source
 st.caption(f"Source file: {content_file}")
