@@ -51,7 +51,7 @@ html, body, [class*="css"] {
   color: #d8d8ff;
 }
 
-/* Right context box — flat blue panel */
+/* Right context box — flat blue */
 .context-box {
   background: var(--cnb-blue);
   border: none;
@@ -64,7 +64,7 @@ html, body, [class*="css"] {
   background-color: #050040;
 }
 
-/* Adjust headings and spacing */
+/* Headings + spacing */
 h1, h2, h3 {
   color: var(--cnb-white);
   font-weight: 700;
@@ -152,59 +152,24 @@ sections = {
 # HELPERS
 # ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
+    """Turn '1. Brand Narrative' into 'content/1-brand-narrative.md'."""
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
     return Path("content") / filename
+
 
 def load_markdown(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
     return f"⚠️ Missing: `{path}`"
 
+
 def extract_subsection(full_md: str, subsection_title: str) -> str:
+    """Extract subsection content from markdown by heading."""
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
     for i, line in enumerate(lines):
         if line.strip() == target:
             start = i
-            break
-    if start is None:
-        return full_md
-    subsection_lines = []
-    for j in range(start, len(lines)):
-        line_j = lines[j]
-        if j > start and line_j.startswith("## "):
-            break
-        subsection_lines.append(line_j)
-    return "\n".join(subsection_lines)
-
-# ---------------------------------------------------------
-# SIDEBAR (LOGO + NAV)
-# ---------------------------------------------------------
-logo_path = Path("assets/logo-primary.png")
-if logo_path.exists():
-    try:
-        st.sidebar.image(str(logo_path), use_container_width=True)
-    except UnidentifiedImageError:
-        st.sidebar.write("Cafe Nogales")
-else:
-    st.sidebar.write("Cafe Nogales")
-
-st.sidebar.title("Cafe Nogales Blueprint")
-main_section = st.sidebar.selectbox("Section", list(sections.keys()))
-sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
-
-# ---------------------------------------------------------
-# LOAD CONTENT
-# ---------------------------------------------------------
-content_file = section_to_filename(main_section)
-full_md = load_markdown(content_file)
-sub_md = extract_subsection(full_md, sub_section)
-
-# ---------------------------------------------------------
-# RELATED LINKS
-# ---------------------------------------------------------
-related_links = {
-    "1. Bra
