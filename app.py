@@ -37,7 +37,7 @@ html, body, [class*="css"] {
 
 /* Top bar */
 .cnb-topbar {
-  background: var(--cnb-navy);
+  background: var(--cnb-blue);
   border-bottom: 2px solid var(--cnb-white);
   padding: 0.7rem 1.2rem;
   display: flex;
