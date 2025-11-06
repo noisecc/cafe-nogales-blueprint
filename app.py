@@ -6,6 +6,22 @@ st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
     layout="wide",
 )
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Apply Noto Sans globally */
+html, body, [class*="css"] {
+  font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
+}
+
+/* Optional: adjust headings */
+h1, h2, h3 {
+  font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
+  font-weight: 700;
+  color: var(--cnb-blue);
+}
+</style>
+""", unsafe_allow_html=True)
 
 # --- GLOBAL STYLES ---
 st.markdown("""
