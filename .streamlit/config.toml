@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#0038f4"         # replace with your Nogales accent brown or ochre
+backgroundColor = "#FFFDF9"
+secondaryBackgroundColor = "#F3EFE8"
+textColor = "#262220"
+font = "sans serif"
