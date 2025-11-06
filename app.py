@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Sidebar structure from the PDF
+# PDF-derived structure
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -72,11 +72,8 @@ def load_markdown(path: Path) -> str:
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
     """
-    Very simple extractor:
-    - We assume subsections start with '## '
-    - We find the line '## {subsection_title}'
-    - We return everything until the next '## ' or end of file
-    If not found, we return the full_md so editors never see blank content.
+    Find '## {subsection_title}' and return that block until the next '## '.
+    If not found, return full_md.
     """
     lines = full_md.splitlines()
     target_header = f"## {subsection_title}".strip()
@@ -87,38 +84,40 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
             break
 
     if start_idx is None:
-        # subsection not found — return full markdown
         return full_md
 
-    # collect lines from start_idx until next "## " (but keep "# ..." above? no, we just show subsection)
     subsection_lines = []
     for j in range(start_idx, len(lines)):
         line = lines[j]
         if j > start_idx and line.startswith("## "):
-            # next subsection begins — stop
             break
         subsection_lines.append(line)
 
     return "\n".join(subsection_lines)
 
 
+# Sidebar
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
-# page titles
+# Page header
 st.title(main_section)
 st.subheader(sub_section)
 
-# load whole file
+# Load files
 content_file = section_to_filename(main_section)
 full_markdown = load_markdown(content_file)
-
-# try to show only the chosen subsection
 sub_markdown = extract_subsection(full_markdown, sub_section)
 
-# render
-st.markdown(sub_markdown, unsafe_allow_html=False)
+# Two-column layout
+left_col, right_col = st.columns([2, 1])
 
-# helper footer so editors know where text comes from
+with left_col:
+    st.markdown(sub_markdown, unsafe_allow_html=False)
+
+with right_col:
+    st.markdown("### Full section (context)")
+    st.markdown(full_markdown, unsafe_allow_html=False)
+
 st.caption(f"Source file: {content_file}")
