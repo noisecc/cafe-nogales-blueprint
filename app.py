@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- GLOBAL STYLES (using your colors) ---
+# --- GLOBAL STYLES ---
 st.markdown("""
 <style>
 :root {
@@ -19,11 +19,6 @@ st.markdown("""
 body {
   color: var(--cnb-text);
   background-color: var(--cnb-white);
-}
-
-/* overall page padding */
-.main > div {
-  padding-top: 0rem;
 }
 
 /* top bar */
@@ -46,7 +41,6 @@ body {
   color: #4a4a4a;
 }
 
-/* markdown styling */
 .markdown-text-container, .stMarkdown {
   line-height: 1.55;
 }
@@ -54,7 +48,7 @@ h1, h2, h3 {
   color: var(--cnb-blue);
 }
 
-/* right column "context" box */
+/* right context box */
 .context-box {
   background: var(--cnb-light);
   border: 1px solid #dbe3ff;
@@ -64,7 +58,6 @@ h1, h2, h3 {
 </style>
 """, unsafe_allow_html=True)
 
-
 # --- TOP BAR ---
 st.markdown("""
 <div class="cnb-topbar">
@@ -73,8 +66,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
-# --- STRUCTURE FROM PDF ---
+# --- STRUCTURE ---
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -126,19 +118,22 @@ sections = {
     ],
 }
 
-
 def section_to_filename(section_name: str) -> Path:
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
     return Path("content") / filename
 
-
 def load_markdown(path: Path) -> str:
-    return path.read_text(encoding="utf-8") if path.exists() else f"⚠️ Missing: `{path}`"
-
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return f"⚠️ Missing: `{path}`"
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
+    """
+    Find '## {subsection_title}' and return that block until the next '## '.
+    If not found, return full_md.
+    """
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -148,21 +143,26 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
             break
     if start is None:
         return full_md
-    block = []
-    for j in range(start, len(lines)):
-        if j > start and line.startswith("## "):
-            break
-        block.append(lines[j])
-    return "\n".join(block)
 
+    subsection_lines = []
+    for j in range(start, len(lines)):
+        line_j = lines[j]
+        if j > start and line_j.startswith("## "):
+            break
+        subsection_lines.append(line_j)
+
+    return "\n".join(subsection_lines)
 
 # --- SIDEBAR ---
-st.sidebar.image("assets/logo-primary.png", use_container_width=True)
+logo_path = Path("assets/logo-primary.png")
+if logo_path.exists():
+    st.sidebar.image(str(logo_path), use_container_width=True)
+
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
-# --- MAIN AREA ---
+# --- MAIN ---
 st.title(main_section)
 st.subheader(sub_section)
 
