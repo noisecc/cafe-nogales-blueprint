@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 1) sidebar structure (from PDF)
+# Sidebar structure from the PDF
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -58,13 +58,8 @@ sections = {
     ],
 }
 
-# 2) helper to map section name -> content file
 def section_to_filename(section_name: str) -> Path:
-    """
-    Turn '1. Brand Narrative' into 'content/1-brand-narrative.md'
-    """
-    # take part after number
-    # "1. Brand Narrative" -> "1-brand-narrative"
+    # "1. Brand Narrative" -> "1-brand-narrative.md"
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
@@ -73,22 +68,57 @@ def section_to_filename(section_name: str) -> Path:
 def load_markdown(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
-    else:
-        return f"⚠️ Content file not found: `{path}`. Please create it in the /content folder."
+    return f"⚠️ Content file not found: `{path}`. Please create it in the /content folder."
+
+def extract_subsection(full_md: str, subsection_title: str) -> str:
+    """
+    Very simple extractor:
+    - We assume subsections start with '## '
+    - We find the line '## {subsection_title}'
+    - We return everything until the next '## ' or end of file
+    If not found, we return the full_md so editors never see blank content.
+    """
+    lines = full_md.splitlines()
+    target_header = f"## {subsection_title}".strip()
+    start_idx = None
+    for i, line in enumerate(lines):
+        if line.strip() == target_header:
+            start_idx = i
+            break
+
+    if start_idx is None:
+        # subsection not found — return full markdown
+        return full_md
+
+    # collect lines from start_idx until next "## " (but keep "# ..." above? no, we just show subsection)
+    subsection_lines = []
+    for j in range(start_idx, len(lines)):
+        line = lines[j]
+        if j > start_idx and line.startswith("## "):
+            # next subsection begins — stop
+            break
+        subsection_lines.append(line)
+
+    return "\n".join(subsection_lines)
+
 
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
+# page titles
 st.title(main_section)
 st.subheader(sub_section)
 
-# 3) load the markdown for the selected main section
+# load whole file
 content_file = section_to_filename(main_section)
-markdown_text = load_markdown(content_file)
+full_markdown = load_markdown(content_file)
 
-# 4) show markdown
-st.markdown(markdown_text, unsafe_allow_html=False)
+# try to show only the chosen subsection
+sub_markdown = extract_subsection(full_markdown, sub_section)
 
-# (Optional) show which subsection was picked, to guide editors
-st.caption(f"Currently viewing subsection: {sub_section}")
+# render
+st.markdown(sub_markdown, unsafe_allow_html=False)
+
+# helper footer so editors know where text comes from
+st.caption(f"Source file: {content_file}")
