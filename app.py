@@ -6,68 +6,72 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- GLOBAL STYLES ---
-st.markdown(
-    """
-    <style>
-    /* overall page padding */
-    .main > div {
-        padding-top: 0rem;
-    }
+# --- GLOBAL STYLES (using your colors) ---
+st.markdown("""
+<style>
+:root {
+  --cnb-blue: #0038f4;
+  --cnb-white: #ffffff;
+  --cnb-light: #f5f7ff;
+  --cnb-text: #1b1b1b;
+}
 
-    /* better line height */
-    .markdown-text-container, .stMarkdown {
-        line-height: 1.5;
-    }
+body {
+  color: var(--cnb-text);
+  background-color: var(--cnb-white);
+}
 
-    /* right column box */
-    .context-box {
-        background: #F9F5EF;
-        border: 1px solid #E6DFD3;
-        border-radius: 10px;
-        padding: 1rem 1.1rem;
-    }
+/* overall page padding */
+.main > div {
+  padding-top: 0rem;
+}
 
-    /* top bar */
-    .cnb-topbar {
-        background: #FFFDF9;
-        border-bottom: 1px solid #EDE3D6;
-        padding: 0.6rem 1.2rem 0.5rem 1.2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-    }
-    .cnb-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: #262220;
-    }
-    .cnb-tagline {
-        font-size: 0.9rem;
-        color: #7B6F5A;
-    }
+/* top bar */
+.cnb-topbar {
+  background: var(--cnb-white);
+  border-bottom: 2px solid var(--cnb-blue);
+  padding: 0.7rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cnb-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--cnb-blue);
+  letter-spacing: 0.3px;
+}
+.cnb-tagline {
+  font-size: 0.9rem;
+  color: #4a4a4a;
+}
 
-    /* subsection title extra spacing */
-    h2 {
-        margin-top: 0.6rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+/* markdown styling */
+.markdown-text-container, .stMarkdown {
+  line-height: 1.55;
+}
+h1, h2, h3 {
+  color: var(--cnb-blue);
+}
+
+/* right column "context" box */
+.context-box {
+  background: var(--cnb-light);
+  border: 1px solid #dbe3ff;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # --- TOP BAR ---
-st.markdown(
-    """
-    <div class="cnb-topbar">
-        <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
-        <div class="cnb-tagline">Closer to Origin</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="cnb-topbar">
+  <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
+  <div class="cnb-tagline">Closer to Origin</div>
+</div>
+""", unsafe_allow_html=True)
 
 
 # --- STRUCTURE FROM PDF ---
@@ -131,61 +135,48 @@ def section_to_filename(section_name: str) -> Path:
 
 
 def load_markdown(path: Path) -> str:
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    return f"⚠️ Content file not found: `{path}`. Please create it in the /content folder."
+    return path.read_text(encoding="utf-8") if path.exists() else f"⚠️ Missing: `{path}`"
 
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
-    """
-    Find '## {subsection_title}' and return that block until the next '## '.
-    If not found, return full_md.
-    """
     lines = full_md.splitlines()
-    target_header = f"## {subsection_title}".strip()
-    start_idx = None
+    target = f"## {subsection_title}".strip()
+    start = None
     for i, line in enumerate(lines):
-        if line.strip() == target_header:
-            start_idx = i
+        if line.strip() == target:
+            start = i
             break
-
-    if start_idx is None:
+    if start is None:
         return full_md
-
-    subsection_lines = []
-    for j in range(start_idx, len(lines)):
-        line = lines[j]
-        if j > start_idx and line.startswith("## "):
+    block = []
+    for j in range(start, len(lines)):
+        if j > start and line.startswith("## "):
             break
-        subsection_lines.append(line)
-
-    return "\n".join(subsection_lines)
+        block.append(lines[j])
+    return "\n".join(block)
 
 
 # --- SIDEBAR ---
+st.sidebar.image("assets/logo-primary.png", use_container_width=True)
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
-# --- TITLES ---
+# --- MAIN AREA ---
 st.title(main_section)
 st.subheader(sub_section)
 
-# --- CONTENT LOADING ---
 content_file = section_to_filename(main_section)
-full_markdown = load_markdown(content_file)
-sub_markdown = extract_subsection(full_markdown, sub_section)
+full_md = load_markdown(content_file)
+sub_md = extract_subsection(full_md, sub_section)
 
-# --- LAYOUT ---
-left_col, right_col = st.columns([2.1, 1])
-
-with left_col:
-    st.markdown(sub_markdown, unsafe_allow_html=False)
-
-with right_col:
+left, right = st.columns([2.1, 1])
+with left:
+    st.markdown(sub_md, unsafe_allow_html=False)
+with right:
     st.markdown('<div class="context-box">', unsafe_allow_html=True)
     st.markdown("### Full section (context)")
-    st.markdown(full_markdown, unsafe_allow_html=False)
+    st.markdown(full_md, unsafe_allow_html=False)
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.caption(f"Source file: {content_file}")
