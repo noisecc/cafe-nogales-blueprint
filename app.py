@@ -1,5 +1,6 @@
 import streamlit as st
 
+# This must be the first Streamlit call
 st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
     layout="wide",
@@ -15,7 +16,7 @@ sections = {
     ],
     "2. Brand Voice and Messaging": [
         "Brand Voice Framework",
-        "Voice Do’s & Don’ts",
+        "Voice Dos and Donts",              # <-- no curly quotes
         "Sample Messaging per Channel",
         "Brand Language Guide",
     ],
@@ -58,9 +59,20 @@ sections = {
 }
 
 st.sidebar.title("Cafe Nogales Blueprint")
-main_section = st.sidebar.selectbox("Section", list(sections.keys()))
-sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
+# first select main section
+main_section = st.sidebar.selectbox(
+    "Section",
+    list(sections.keys())
+)
+
+# then select subsection based on main section
+sub_section = st.sidebar.selectbox(
+    "Subsection",
+    sections[main_section]
+)
+
+# main area
 st.title(main_section)
 st.subheader(sub_section)
-st.info("Placeholder content – to be linked to real brand guideline content in Phase 2.")
+st.info("Placeholder content — will be connected to real guideline text in the next phase.")
