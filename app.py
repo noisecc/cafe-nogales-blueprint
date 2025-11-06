@@ -1,30 +1,19 @@
 import streamlit as st
 from pathlib import Path
-from PIL import UnidentifiedImageError  # <-- to catch bad images
+from PIL import UnidentifiedImageError  # for safe logo loading
 
 st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
     layout="wide",
 )
+
+# ---------------------------------------------------------
+# GLOBAL STYLES + GOOGLE FONTS
+# ---------------------------------------------------------
 st.markdown("""
+<!-- Google Fonts: Noto Sans (Latin), KR, JP -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-/* Apply Noto Sans globally */
-html, body, [class*="css"] {
-  font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
-}
 
-/* Optional: adjust headings */
-h1, h2, h3 {
-  font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
-  font-weight: 700;
-  color: var(--cnb-blue);
-}
-</style>
-""", unsafe_allow_html=True)
-
-# --- GLOBAL STYLES ---
-st.markdown("""
 <style>
 :root {
   --cnb-blue: #0038f4;
@@ -33,9 +22,12 @@ st.markdown("""
   --cnb-text: #1b1b1b;
 }
 
-body {
+/* apply Noto Sans globally */
+html, body, [class*="css"] {
+  font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
   color: var(--cnb-text);
   background-color: var(--cnb-white);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* top bar */
@@ -61,8 +53,11 @@ body {
 .markdown-text-container, .stMarkdown {
   line-height: 1.55;
 }
+
+/* headings in brand blue */
 h1, h2, h3 {
   color: var(--cnb-blue);
+  font-weight: 700;
 }
 
 /* right context box */
@@ -72,10 +67,17 @@ h1, h2, h3 {
   border-radius: 10px;
   padding: 1rem 1.1rem;
 }
+
+/* reduce top padding on main */
+.main > div {
+  padding-top: 0rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- TOP BAR ---
+# ---------------------------------------------------------
+# TOP BAR
+# ---------------------------------------------------------
 st.markdown("""
 <div class="cnb-topbar">
   <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
@@ -83,7 +85,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- STRUCTURE ---
+# ---------------------------------------------------------
+# STRUCTURE FROM PDF
+# ---------------------------------------------------------
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -135,7 +139,11 @@ sections = {
     ],
 }
 
+# ---------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
+    # "1. Brand Narrative" -> "1-brand-narrative.md"
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
@@ -147,6 +155,10 @@ def load_markdown(path: Path) -> str:
     return f"⚠️ Missing: `{path}`"
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
+    """
+    Find '## {subsection_title}' and return that block until the next '## '.
+    If not found, return full_md.
+    """
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -165,13 +177,15 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
         subsection_lines.append(line_j)
     return "\n".join(subsection_lines)
 
-# --- SIDEBAR (safe image loading) ---
+# ---------------------------------------------------------
+# SIDEBAR (safe logo)
+# ---------------------------------------------------------
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
     try:
         st.sidebar.image(str(logo_path), use_container_width=True)
     except UnidentifiedImageError:
-        # file exists but is not a valid image
+        # file exists but isn't a valid image
         st.sidebar.write("Cafe Nogales")
 else:
     st.sidebar.write("Cafe Nogales")
@@ -180,7 +194,9 @@ st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
-# --- MAIN ---
+# ---------------------------------------------------------
+# MAIN CONTENT
+# ---------------------------------------------------------
 st.title(main_section)
 st.subheader(sub_section)
 
