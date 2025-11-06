@@ -66,7 +66,7 @@ h1, h2, h3 {
 /* Right context box */
 .context-box {
   background: var(--cnb-blue);
-  border: 1px solid #1a1a5e;
+  border: 0px solid #1a1a5e;
   border-radius: 16px;
   padding: 1.2rem 1.4rem;
   box-shadow: 0 0 8px rgba(0,0,0,0.25);
