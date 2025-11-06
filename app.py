@@ -2,11 +2,17 @@ import streamlit as st
 from pathlib import Path
 from PIL import UnidentifiedImageError
 
+# ---------------------------------------------------------
+# PAGE CONFIG
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="Cafe Nogales – Brand Blueprint",
     layout="wide",
 )
 
+# ---------------------------------------------------------
+# GLOBAL STYLES + GOOGLE FONTS
+# ---------------------------------------------------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -18,7 +24,7 @@ st.markdown("""
   --cnb-text: #ffffff;
 }
 
-/* global */
+/* Global typography */
 html, body, [class*="css"] {
   font-family: 'Noto Sans', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
   color: var(--cnb-text);
@@ -26,7 +32,7 @@ html, body, [class*="css"] {
   -webkit-font-smoothing: antialiased;
 }
 
-/* top bar */
+/* Top bar */
 .cnb-topbar {
   background: var(--cnb-blue);
   border-bottom: none;
@@ -45,7 +51,7 @@ html, body, [class*="css"] {
   color: #d8d8ff;
 }
 
-/* right panel */
+/* Right context box — flat blue */
 .context-box {
   background: var(--cnb-blue);
   border: none;
@@ -53,12 +59,12 @@ html, body, [class*="css"] {
   padding: 1.2rem 1.4rem;
 }
 
-/* sidebar */
+/* Sidebar background */
 [data-testid="stSidebar"] {
   background-color: #050040;
 }
 
-/* headings */
+/* Headings + spacing */
 h1, h2, h3 {
   color: var(--cnb-white);
   font-weight: 700;
@@ -67,12 +73,12 @@ h1, h2, h3 {
   line-height: 1.55;
 }
 
-/* IMPORTANT: push main content down so it shows below topbar */
+/* Push content down so it doesn't hide behind top bar */
 .main > div {
   padding-top: 1.6rem;
 }
 
-/* make expanders match */
+/* Make expanders blend with dark */
 details {
   background: transparent !important;
   color: var(--cnb-white);
@@ -80,6 +86,9 @@ details {
 </style>
 """, unsafe_allow_html=True)
 
+# ---------------------------------------------------------
+# TOP BAR
+# ---------------------------------------------------------
 st.markdown("""
 <div class="cnb-topbar">
   <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
@@ -87,6 +96,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ---------------------------------------------------------
+# STRUCTURE (from PDF)
+# ---------------------------------------------------------
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -138,10 +150,14 @@ sections = {
     ],
 }
 
+# ---------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
-    return Path("content") / f"{number_part.strip()}-{slug}.md"
+    filename = f"{number_part.strip()}-{slug}.md"
+    return Path("content") / filename
 
 def load_markdown(path: Path) -> str:
     if path.exists():
@@ -158,15 +174,17 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
             break
     if start is None:
         return full_md
-    out = []
+    out_lines = []
     for j in range(start, len(lines)):
         line_j = lines[j]
         if j > start and line_j.startswith("## "):
             break
-        out.append(line_j)
-    return "\n".join(out)
+        out_lines.append(line_j)
+    return "\n".join(out_lines)
 
-# sidebar
+# ---------------------------------------------------------
+# SIDEBAR (new navigation)
+# ---------------------------------------------------------
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
     try:
@@ -177,13 +195,44 @@ else:
     st.sidebar.write("Cafe Nogales")
 
 st.sidebar.title("Cafe Nogales Blueprint")
-main_section = st.sidebar.selectbox("Section", list(sections.keys()))
-sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
+# initialize session state
+if "main_section" not in st.session_state:
+    st.session_state.main_section = list(sections.keys())[0]
+if "sub_section" not in st.session_state:
+    st.session_state.sub_section = sections[st.session_state.main_section][0]
+
+# build sidebar as expanders
+for sec_name, subsecs in sections.items():
+    expanded = sec_name == st.session_state.main_section
+    with st.sidebar.expander(sec_name, expanded=expanded):
+        # radio for subsections in this section
+        selected_sub = st.radio(
+            "Select subsection",
+            subsecs,
+            index=subsecs.index(st.session_state.sub_section) if sec_name == st.session_state.main_section and st.session_state.sub_section in subsecs else 0,
+            key=f"radio_{sec_name}",
+            label_visibility="collapsed",
+        )
+        # if user interacted with this expander, set current section/subsection
+        if expanded:
+            st.session_state.sub_section = selected_sub
+            st.session_state.main_section = sec_name
+
+# now read current selection from session state
+main_section = st.session_state.main_section
+sub_section = st.session_state.sub_section
+
+# ---------------------------------------------------------
+# LOAD CONTENT
+# ---------------------------------------------------------
 content_file = section_to_filename(main_section)
 full_md = load_markdown(content_file)
 sub_md = extract_subsection(full_md, sub_section)
 
+# ---------------------------------------------------------
+# RELATED LINKS PANEL
+# ---------------------------------------------------------
 related_links = {
     "1. Brand Narrative": [
         ("📘 Company Story Deck", "https://drive.google.com/your-story-link"),
@@ -202,6 +251,9 @@ related_links = {
     ],
 }
 
+# ---------------------------------------------------------
+# LAYOUT
+# ---------------------------------------------------------
 left_col, right_col = st.columns([2.1, 1])
 
 with left_col:
