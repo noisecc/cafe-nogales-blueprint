@@ -6,7 +6,71 @@ st.set_page_config(
     layout="wide",
 )
 
-# PDF-derived structure
+# --- GLOBAL STYLES ---
+st.markdown(
+    """
+    <style>
+    /* overall page padding */
+    .main > div {
+        padding-top: 0rem;
+    }
+
+    /* better line height */
+    .markdown-text-container, .stMarkdown {
+        line-height: 1.5;
+    }
+
+    /* right column box */
+    .context-box {
+        background: #F9F5EF;
+        border: 1px solid #E6DFD3;
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+    }
+
+    /* top bar */
+    .cnb-topbar {
+        background: #FFFDF9;
+        border-bottom: 1px solid #EDE3D6;
+        padding: 0.6rem 1.2rem 0.5rem 1.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    .cnb-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #262220;
+    }
+    .cnb-tagline {
+        font-size: 0.9rem;
+        color: #7B6F5A;
+    }
+
+    /* subsection title extra spacing */
+    h2 {
+        margin-top: 0.6rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# --- TOP BAR ---
+st.markdown(
+    """
+    <div class="cnb-topbar">
+        <div class="cnb-title">☕ Cafe Nogales — Brand Blueprint</div>
+        <div class="cnb-tagline">Closer to Origin</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# --- STRUCTURE FROM PDF ---
 sections = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -58,17 +122,19 @@ sections = {
     ],
 }
 
+
 def section_to_filename(section_name: str) -> Path:
-    # "1. Brand Narrative" -> "1-brand-narrative.md"
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     filename = f"{number_part.strip()}-{slug}.md"
     return Path("content") / filename
 
+
 def load_markdown(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
     return f"⚠️ Content file not found: `{path}`. Please create it in the /content folder."
+
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
     """
@@ -96,28 +162,30 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
     return "\n".join(subsection_lines)
 
 
-# Sidebar
+# --- SIDEBAR ---
 st.sidebar.title("Cafe Nogales Blueprint")
 main_section = st.sidebar.selectbox("Section", list(sections.keys()))
 sub_section = st.sidebar.selectbox("Subsection", sections[main_section])
 
-# Page header
+# --- TITLES ---
 st.title(main_section)
 st.subheader(sub_section)
 
-# Load files
+# --- CONTENT LOADING ---
 content_file = section_to_filename(main_section)
 full_markdown = load_markdown(content_file)
 sub_markdown = extract_subsection(full_markdown, sub_section)
 
-# Two-column layout
-left_col, right_col = st.columns([2, 1])
+# --- LAYOUT ---
+left_col, right_col = st.columns([2.1, 1])
 
 with left_col:
     st.markdown(sub_markdown, unsafe_allow_html=False)
 
 with right_col:
+    st.markdown('<div class="context-box">', unsafe_allow_html=True)
     st.markdown("### Full section (context)")
     st.markdown(full_markdown, unsafe_allow_html=False)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.caption(f"Source file: {content_file}")
