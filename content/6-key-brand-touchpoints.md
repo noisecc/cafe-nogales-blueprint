@@ -1,17 +1,19 @@
 # 6. Key Brand Touchpoints
 
 ## B2B Website Layout Guidelines
-(put your final brand story here)
+(Homepage hero → current origins → catalog → sourcing story. Keep copy short, precise, traceable.)
 
 ## Green Coffee Bag Design (tier variations)
-(put mission from the PDF here)
+(What elements are fixed vs variable; how tiers/origins are distinguished.)
 
-##  Roaster Welcome Kit
-(terminology, positioning, “Closer to Origin” notes)
+## Roaster Welcome Kit
+(Onboarding pack: brand story, how to read our offer sheet, logistics terms, contact points.)
 
 ## Cupping Cards & Traceability Sheets
-(current roasters vs next gen roasters)
+(Standardized info: origin, producer, process, elevation, harvesting, scoring, notes.)
 
 ## Social Media Brand Experience
+(Consistency of tone/visuals with the voice framework; what to avoid.)
 
 ## Event / Pop-up Signage System
+(Banners, table talkers, cupping event cards — proportion of photo vs text.)
