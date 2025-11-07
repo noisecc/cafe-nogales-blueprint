@@ -164,7 +164,7 @@ sections_ko_labels = {
 sections_ko_subs = {
     "1. Brand Narrative": [
         "브랜드 스토리",
-        "미션 & 비전",       # <- this is the one you said
+        "미션 & 비전",
         "전략적 정의",
         "타깃 인사이트",
     ],
@@ -213,48 +213,38 @@ sections_ko_subs = {
 }
 
 # ---------------------------------------------------------
-# SPECIAL KOREAN OVERRIDES
-# key = Korean subsection label, value = filename in content_ko/
-# ---------------------------------------------------------
-KO_SUBSECTION_FILE_OVERRIDE = {
-    # you said this should come from 2-brand-voice-and-messaging-ko.md
-    "미션 & 비전": "2-brand-voice-and-messaging-ko.md",
-}
-
-# ---------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------
-def section_to_filename(section_name: str) -> Path:
-    """'1. Brand Narrative' -> content/1-brand-narrative.md"""
+def english_section_to_path(section_name: str) -> Path:
+    """Turn '1. Brand Narrative' -> content/1-brand-narrative.md"""
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     return Path("content") / f"{number_part.strip()}-{slug}.md"
 
 
-def load_markdown_for_lang(base_path: Path, lang: str, active_subsection: str | None = None) -> tuple[str, Path]:
+def load_markdown_for_lang(base_path: Path, lang: str) -> tuple[str, Path]:
     """
-    Return (markdown_text, actual_path_loaded)
-    1) if Korean and subsection has explicit override -> load that file
-    2) if Korean, try content_ko/<same filename>
-    3) if Korean, try content_ko/<number-*.md>
-    4) fallback to English
+    Try to load a Korean file first, in this order:
+    1) content_ko/<same-filename>.md
+    2) content_ko/<same-filename-with--ko.md>
+    3) content_ko/<number-*.md>
+    else fall back to English
+    Returns (text, actual_path_used)
     """
-    # 1. explicit override
-    if lang == "한국어" and active_subsection in KO_SUBSECTION_FILE_OVERRIDE:
-        override_filename = KO_SUBSECTION_FILE_OVERRIDE[active_subsection]
-        override_path = Path("content_ko") / override_filename
-        if override_path.exists():
-            return override_path.read_text(encoding="utf-8"), override_path
-        # if override file doesn’t exist, continue with normal logic
-
     if lang == "한국어":
         ko_dir = Path("content_ko")
-        # exact filename (same as English, without -ko)
+        # 1. exact same name
         exact_ko = ko_dir / base_path.name
         if exact_ko.exists():
             return exact_ko.read_text(encoding="utf-8"), exact_ko
-        # prefix match (e.g. "3-" or "5-")
-        prefix = base_path.name.split("-", 1)[0]  # "3" from "3-visual-identity-system.md"
+
+        # 2. name with -ko.md
+        ko_variant = ko_dir / (base_path.stem + "-ko.md")
+        if ko_variant.exists():
+            return ko_variant.read_text(encoding="utf-8"), ko_variant
+
+        # 3. any file that starts with the same number
+        prefix = base_path.name.split("-", 1)[0]  # e.g. "3" from "3-visual-identity-system.md"
         candidates = sorted(ko_dir.glob(f"{prefix}-*.md"))
         if candidates:
             chosen = candidates[0]
@@ -287,7 +277,7 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
     return "\n".join(out_lines)
 
 # ---------------------------------------------------------
-# SIDEBAR (logo + language + nav)
+# SIDEBAR (logo + language + explicit section/subsection selects)
 # ---------------------------------------------------------
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
@@ -301,65 +291,60 @@ else:
 lang = st.sidebar.selectbox("Language / 언어", ["English", "한국어"])
 st.sidebar.title("Cafe Nogales Blueprint" if lang == "English" else "카페 노갈레스 브랜드 기준서")
 
-# init session state
-if "main_section" not in st.session_state:
-    st.session_state.main_section = list(sections_en.keys())[0]
-if "sub_section_idx" not in st.session_state:
-    st.session_state.sub_section_idx = 0
+section_keys = list(sections_en.keys())
 
-# pick UI labels
 if lang == "English":
-    sections_ui_labels = {k: k for k in sections_en.keys()}
-    sections_ui_subs = sections_en
+    section_display = section_keys
 else:
-    sections_ui_labels = sections_ko_labels
-    sections_ui_subs = sections_ko_subs
+    section_display = [sections_ko_labels[k] for k in section_keys]
 
-# build sidebar as expanders
-for sec_key in sections_en.keys():
-    expanded = (sec_key == st.session_state.main_section)
-    ui_section_title = sections_ui_labels.get(sec_key, sec_key)
-    with st.sidebar.expander(ui_section_title, expanded=expanded):
-        ui_subs = sections_ui_subs[sec_key]
-        if expanded:
-            current_idx = st.session_state.sub_section_idx
-            if current_idx >= len(ui_subs):
-                current_idx = 0
-        else:
-            current_idx = 0
-        chosen_sub = st.radio(
-            "sub",
-            ui_subs,
-            index=current_idx,
-            key=f"radio_{sec_key}_{lang}",
-            label_visibility="collapsed",
-        )
-        if expanded:
-            st.session_state.main_section = sec_key
-            st.session_state.sub_section_idx = ui_subs.index(chosen_sub)
+# remember selection
+if "section_idx" not in st.session_state:
+    st.session_state.section_idx = 0
+if "sub_idx" not in st.session_state:
+    st.session_state.sub_idx = 0
 
-# active selection
-active_section_key = st.session_state.main_section
-active_sub_idx = st.session_state.sub_section_idx
+# SECTION SELECT
+selected_section_display = st.sidebar.selectbox(
+    "Section / 섹션",
+    section_display,
+    index=st.session_state.section_idx,
+)
 
-# display titles
+# map display back to english key
 if lang == "English":
-    display_section_title = active_section_key
-    display_subsection_title = sections_en[active_section_key][active_sub_idx]
+    active_section_key = selected_section_display
 else:
-    display_section_title = sections_ko_labels.get(active_section_key, active_section_key)
-    display_subsection_title = sections_ko_subs[active_section_key][active_sub_idx]
+    # find the english key that has this korean label
+    reverse_map = {v: k for k, v in sections_ko_labels.items()}
+    active_section_key = reverse_map[selected_section_display]
+
+st.session_state.section_idx = section_keys.index(active_section_key)
+
+# SUBSECTION SELECT
+if lang == "English":
+    current_subs = sections_en[active_section_key]
+else:
+    current_subs = sections_ko_subs[active_section_key]
+
+selected_sub = st.sidebar.selectbox(
+    "Subsection / 하위 섹션",
+    current_subs,
+    index=st.session_state.sub_idx if st.session_state.sub_idx < len(current_subs) else 0,
+)
+st.session_state.sub_idx = current_subs.index(selected_sub)
 
 # ---------------------------------------------------------
-# LOAD CONTENT (LANG-AWARE, with actual path)
+# LOAD CONTENT (LANG-AWARE, per section)
 # ---------------------------------------------------------
-content_file = section_to_filename(active_section_key)
-full_md, actual_path = load_markdown_for_lang(content_file, lang, active_subsection=display_subsection_title)
+content_file = english_section_to_path(active_section_key)
+full_md, actual_path = load_markdown_for_lang(content_file, lang)
 
 if lang == "English":
-    sub_md = extract_subsection(full_md, display_subsection_title)
+    # English markdown is structured with ## headings
+    sub_md = extract_subsection(full_md, selected_sub)
 else:
-    # Korean file headings usually won’t match sidebar labels, so show entire file
+    # Korean markdown likely not using same headings → show whole file
     sub_md = full_md
 
 # ---------------------------------------------------------
@@ -389,8 +374,14 @@ related_links = {
 left_col, right_col = st.columns([2.1, 1])
 
 with left_col:
-    st.title(display_section_title)
-    st.subheader(display_subsection_title)
+    # display section/subsection titles in chosen language
+    if lang == "English":
+        st.title(active_section_key)
+        st.subheader(selected_sub)
+    else:
+        st.title(sections_ko_labels.get(active_section_key, active_section_key))
+        st.subheader(selected_sub)
+
     st.markdown(sub_md, unsafe_allow_html=False)
 
 with right_col:
@@ -404,5 +395,5 @@ with right_col:
             st.markdown("_No related documents yet._" if lang == "English" else "_관련 문서가 없습니다._")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# show which file we actually loaded
+# show the actual file we loaded
 st.caption(f"Source file: {actual_path}")
