@@ -164,7 +164,7 @@ sections_ko_labels = {
 sections_ko_subs = {
     "1. Brand Narrative": [
         "브랜드 스토리",
-        "미션 & 비전",
+        "미션 & 비전",       # <- this is the one you said
         "전략적 정의",
         "타깃 인사이트",
     ],
@@ -213,6 +213,15 @@ sections_ko_subs = {
 }
 
 # ---------------------------------------------------------
+# SPECIAL KOREAN OVERRIDES
+# key = Korean subsection label, value = filename in content_ko/
+# ---------------------------------------------------------
+KO_SUBSECTION_FILE_OVERRIDE = {
+    # you said this should come from 2-brand-voice-and-messaging-ko.md
+    "미션 & 비전": "2-brand-voice-and-messaging-ko.md",
+}
+
+# ---------------------------------------------------------
 # HELPERS
 # ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
@@ -222,32 +231,39 @@ def section_to_filename(section_name: str) -> Path:
     return Path("content") / f"{number_part.strip()}-{slug}.md"
 
 
-def load_markdown_for_lang(base_path: Path, lang: str) -> tuple[str, Path]:
+def load_markdown_for_lang(base_path: Path, lang: str, active_subsection: str | None = None) -> tuple[str, Path]:
     """
     Return (markdown_text, actual_path_loaded)
-    Tries:
-      1) content_ko/<same-filename>          (when Korean)
-      2) any content_ko/<number-*.md>        (when Korean, looser match)
-      3) fallback to English base_path
+    1) if Korean and subsection has explicit override -> load that file
+    2) if Korean, try content_ko/<same filename>
+    3) if Korean, try content_ko/<number-*.md>
+    4) fallback to English
     """
+    # 1. explicit override
+    if lang == "한국어" and active_subsection in KO_SUBSECTION_FILE_OVERRIDE:
+        override_filename = KO_SUBSECTION_FILE_OVERRIDE[active_subsection]
+        override_path = Path("content_ko") / override_filename
+        if override_path.exists():
+            return override_path.read_text(encoding="utf-8"), override_path
+        # if override file doesn’t exist, continue with normal logic
+
     if lang == "한국어":
         ko_dir = Path("content_ko")
-        # exact filename
+        # exact filename (same as English, without -ko)
         exact_ko = ko_dir / base_path.name
         if exact_ko.exists():
             return exact_ko.read_text(encoding="utf-8"), exact_ko
-        # prefix match
-        prefix = base_path.name.split("-", 1)[0]  # e.g. "3"
+        # prefix match (e.g. "3-" or "5-")
+        prefix = base_path.name.split("-", 1)[0]  # "3" from "3-visual-identity-system.md"
         candidates = sorted(ko_dir.glob(f"{prefix}-*.md"))
         if candidates:
             chosen = candidates[0]
             return chosen.read_text(encoding="utf-8"), chosen
-        # fall through to English
 
+    # fallback to English
     if base_path.exists():
         return base_path.read_text(encoding="utf-8"), base_path
 
-    # nothing found
     return f"⚠️ Missing: `{base_path}`", base_path
 
 
@@ -338,12 +354,12 @@ else:
 # LOAD CONTENT (LANG-AWARE, with actual path)
 # ---------------------------------------------------------
 content_file = section_to_filename(active_section_key)
-full_md, actual_path = load_markdown_for_lang(content_file, lang)
+full_md, actual_path = load_markdown_for_lang(content_file, lang, active_subsection=display_subsection_title)
 
 if lang == "English":
     sub_md = extract_subsection(full_md, display_subsection_title)
 else:
-    # Korean file headings won't match sidebar labels, so show entire file
+    # Korean file headings usually won’t match sidebar labels, so show entire file
     sub_md = full_md
 
 # ---------------------------------------------------------
@@ -388,5 +404,5 @@ with right_col:
             st.markdown("_No related documents yet._" if lang == "English" else "_관련 문서가 없습니다._")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# show the actual file we loaded (EN or KO)
+# show which file we actually loaded
 st.caption(f"Source file: {actual_path}")
