@@ -97,9 +97,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# STRUCTURE (EN + KO LABELS)
+# STRUCTURE: ENGLISH BASE
 # ---------------------------------------------------------
-# English base keys — used for file loading
 sections_en = {
     "1. Brand Narrative": [
         "Our Story: Who We Are & Why We Exist",
@@ -151,8 +150,21 @@ sections_en = {
     ],
 }
 
-# Korean labels mapped to the SAME keys/subkeys
-sections_ko = {
+# ---------------------------------------------------------
+# STRUCTURE: KOREAN LABELS
+# (same keys, Korean display text)
+# ---------------------------------------------------------
+sections_ko_labels = {
+    "1. Brand Narrative": "1. 브랜드 내러티브",
+    "2. Brand Voice and Messaging": "2. 브랜드 보이스 & 메시징",
+    "3. Visual Identity System": "3. 비주얼 아이덴티티 시스템",
+    "4. Product Structure & Architecture": "4. 제품 구조 & 아키텍처",
+    "5. Brand Assets": "5. 브랜드 자산",
+    "6. Key Brand Touchpoints": "6. 주요 브랜드 터치포인트",
+    "7. Brand Guidelines": "7. 브랜드 가이드라인",
+}
+
+sections_ko_subs = {
     "1. Brand Narrative": [
         "브랜드 스토리",
         "미션 & 비전",
@@ -207,19 +219,27 @@ sections_ko = {
 # HELPERS
 # ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
-    # use EN key to build filename
+    # "1. Brand Narrative" -> "content/1-brand-narrative.md"
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     return Path("content") / f"{number_part.strip()}-{slug}.md"
 
-def load_markdown(path: Path) -> str:
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    return f"⚠️ Missing: `{path}`"
+def load_markdown_for_lang(base_path: Path, lang: str) -> str:
+    """
+    Try Korean file first if lang == '한국어':
+    content_ko/<same-filename>
+    else fall back to English content/<filename>
+    """
+    if lang == "한국어":
+        ko_path = Path("content_ko") / base_path.name
+        if ko_path.exists():
+            return ko_path.read_text(encoding="utf-8")
+    if base_path.exists():
+        return base_path.read_text(encoding="utf-8")
+    return f"⚠️ Missing: `{base_path}`"
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
-    # in KO mode, subsection_title will be Korean, but our markdown likely uses English headings,
-    # so if no match, we fall back to full_md
+    """For English we can extract a specific subsection; for Korean we usually show whole file."""
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -238,7 +258,7 @@ def extract_subsection(full_md: str, subsection_title: str) -> str:
     return "\n".join(out_lines)
 
 # ---------------------------------------------------------
-# SIDEBAR (with language)
+# SIDEBAR (logo + language + nav)
 # ---------------------------------------------------------
 logo_path = Path("assets/logo-primary.png")
 if logo_path.exists():
@@ -249,65 +269,68 @@ if logo_path.exists():
 else:
     st.sidebar.write("Cafe Nogales")
 
-# language selector
+# language switch
 lang = st.sidebar.selectbox("Language / 언어", ["English", "한국어"])
 
 st.sidebar.title("Cafe Nogales Blueprint" if lang == "English" else "카페 노갈레스 브랜드 기준서")
 
-# use session state to persist selection
+# init session state
 if "main_section" not in st.session_state:
     st.session_state.main_section = list(sections_en.keys())[0]
 if "sub_section_idx" not in st.session_state:
     st.session_state.sub_section_idx = 0
 
-# pick correct label set
-sections_ui = sections_en if lang == "English" else sections_ko
+# choose which label set to display
+if lang == "English":
+    sections_ui_labels = {k: k for k in sections_en.keys()}
+    sections_ui_subs = sections_en
+else:
+    sections_ui_labels = sections_ko_labels
+    sections_ui_subs = sections_ko_subs
 
 # build sidebar as expanders
 for sec_key in sections_en.keys():
-    # show EN or KO section name
-    ui_section_title = sec_key if lang == "English" else sections_ko[sec_key][0].split(" / ")[0] if sections_ko[sec_key] else sec_key
-    # but Korean top-level in our dict is still the EN key — we can just show sec_key for clarity
-    ui_section_title = sec_key if lang == "English" else sec_key  # simpler: show numbering always
-
     expanded = (sec_key == st.session_state.main_section)
+    ui_section_title = sections_ui_labels.get(sec_key, sec_key)
     with st.sidebar.expander(ui_section_title, expanded=expanded):
-        # get subsections in UI language
-        ui_subsections = sections_ui[sec_key]
-        # figure out the current index for this section
-        current_idx = st.session_state.sub_section_idx if expanded else 0
+        ui_subs = sections_ui_subs[sec_key]
+        # current index for this section
+        if expanded:
+            current_idx = st.session_state.sub_section_idx
+            if current_idx >= len(ui_subs):
+                current_idx = 0
+        else:
+            current_idx = 0
         chosen_sub = st.radio(
             "sub",
-            ui_subsections,
-            index=current_idx if current_idx < len(ui_subsections) else 0,
+            ui_subs,
+            index=current_idx,
             key=f"radio_{sec_key}_{lang}",
             label_visibility="collapsed",
         )
         if expanded:
-            # update session state
             st.session_state.main_section = sec_key
-            st.session_state.sub_section_idx = ui_subsections.index(chosen_sub)
+            st.session_state.sub_section_idx = ui_subs.index(chosen_sub)
 
-# now resolve active section/subsection
+# active section/subsection (keys always from EN)
 active_section_key = st.session_state.main_section
 active_sub_idx = st.session_state.sub_section_idx
 
-# what to display in MAIN title
-display_section_title = active_section_key if lang == "English" else f"{active_section_key} (KR)"
-display_subsection_title = (
-    sections_en[active_section_key][active_sub_idx]
-    if lang == "English"
-    else sections_ko[active_section_key][active_sub_idx]
-)
+# display titles
+if lang == "English":
+    display_section_title = active_section_key
+    display_subsection_title = sections_en[active_section_key][active_sub_idx]
+else:
+    display_section_title = sections_ko_labels.get(active_section_key, active_section_key)
+    display_subsection_title = sections_ko_subs[active_section_key][active_sub_idx]
 
 # ---------------------------------------------------------
-# LOAD CONTENT (always from EN file)
+# LOAD CONTENT FILES (language-aware)
 # ---------------------------------------------------------
 content_file = section_to_filename(active_section_key)
-full_md = load_markdown(content_file)
+full_md = load_markdown_for_lang(content_file, lang)
 
-# try to extract subsection — will only work automatically in EN;
-# in KO we just show full section (safe fallback)
+# for English we can show only the subsection; for Korean show whole (since headings differ)
 if lang == "English":
     sub_md = extract_subsection(full_md, display_subsection_title)
 else:
