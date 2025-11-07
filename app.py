@@ -216,40 +216,43 @@ sections_ko_subs = {
 # HELPERS
 # ---------------------------------------------------------
 def section_to_filename(section_name: str) -> Path:
-    # "1. Brand Narrative" -> "content/1-brand-narrative.md"
+    """'1. Brand Narrative' -> content/1-brand-narrative.md"""
     number_part, title_part = section_name.split(".", 1)
     slug = title_part.strip().lower().replace(" ", "-")
     return Path("content") / f"{number_part.strip()}-{slug}.md"
 
 
-def load_markdown_for_lang(base_path: Path, lang: str) -> str:
+def load_markdown_for_lang(base_path: Path, lang: str) -> tuple[str, Path]:
     """
-    Try to load a Korean version from content_ko/.
-    1) exact filename match
-    2) if not, try by number prefix (e.g. '3-' matches any '3-*.md')
-    3) fallback to English
+    Return (markdown_text, actual_path_loaded)
+    Tries:
+      1) content_ko/<same-filename>          (when Korean)
+      2) any content_ko/<number-*.md>        (when Korean, looser match)
+      3) fallback to English base_path
     """
     if lang == "한국어":
         ko_dir = Path("content_ko")
-        # 1. exact
+        # exact filename
         exact_ko = ko_dir / base_path.name
         if exact_ko.exists():
-            return exact_ko.read_text(encoding="utf-8")
-        # 2. prefix match (e.g. "3-" or "5-")
-        prefix = base_path.name.split("-", 1)[0]  # "3" from "3-visual-identity-system.md"
+            return exact_ko.read_text(encoding="utf-8"), exact_ko
+        # prefix match
+        prefix = base_path.name.split("-", 1)[0]  # e.g. "3"
         candidates = sorted(ko_dir.glob(f"{prefix}-*.md"))
         if candidates:
-            return candidates[0].read_text(encoding="utf-8")
-        # if nothing found, fall through to English
+            chosen = candidates[0]
+            return chosen.read_text(encoding="utf-8"), chosen
+        # fall through to English
 
-    # English/fallback
     if base_path.exists():
-        return base_path.read_text(encoding="utf-8")
-    return f"⚠️ Missing: `{base_path}`"
+        return base_path.read_text(encoding="utf-8"), base_path
+
+    # nothing found
+    return f"⚠️ Missing: `{base_path}`", base_path
 
 
 def extract_subsection(full_md: str, subsection_title: str) -> str:
-    """For English we can extract a specific subsection; for Korean we usually show whole file."""
+    """English-only subsection extraction by '## <title>'"""
     lines = full_md.splitlines()
     target = f"## {subsection_title}".strip()
     start = None
@@ -296,7 +299,7 @@ else:
     sections_ui_labels = sections_ko_labels
     sections_ui_subs = sections_ko_subs
 
-# build sidebar
+# build sidebar as expanders
 for sec_key in sections_en.keys():
     expanded = (sec_key == st.session_state.main_section)
     ui_section_title = sections_ui_labels.get(sec_key, sec_key)
@@ -319,11 +322,11 @@ for sec_key in sections_en.keys():
             st.session_state.main_section = sec_key
             st.session_state.sub_section_idx = ui_subs.index(chosen_sub)
 
-# active
+# active selection
 active_section_key = st.session_state.main_section
 active_sub_idx = st.session_state.sub_section_idx
 
-# titles for display
+# display titles
 if lang == "English":
     display_section_title = active_section_key
     display_subsection_title = sections_en[active_section_key][active_sub_idx]
@@ -332,15 +335,15 @@ else:
     display_subsection_title = sections_ko_subs[active_section_key][active_sub_idx]
 
 # ---------------------------------------------------------
-# LOAD CONTENT (LANG-AWARE)
+# LOAD CONTENT (LANG-AWARE, with actual path)
 # ---------------------------------------------------------
 content_file = section_to_filename(active_section_key)
-full_md = load_markdown_for_lang(content_file, lang)
+full_md, actual_path = load_markdown_for_lang(content_file, lang)
 
 if lang == "English":
     sub_md = extract_subsection(full_md, display_subsection_title)
 else:
-    # Korean headings in the md may not match sidebar labels, so just show full file
+    # Korean file headings won't match sidebar labels, so show entire file
     sub_md = full_md
 
 # ---------------------------------------------------------
@@ -385,4 +388,5 @@ with right_col:
             st.markdown("_No related documents yet._" if lang == "English" else "_관련 문서가 없습니다._")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.caption(f"Source file: {content_file}")
+# show the actual file we loaded (EN or KO)
+st.caption(f"Source file: {actual_path}")
